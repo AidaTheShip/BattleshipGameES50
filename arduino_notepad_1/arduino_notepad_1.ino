@@ -95,27 +95,36 @@ bool checker(int c1, int c2){
 //define a callback for key presses
 TrellisCallback blink(keyEvent evt){
   if (state == 0){
-  if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_RISING) {
-    trellis.setPixelColor(evt.bit.NUM, Wheel(map(evt.bit.NUM, 0, X_DIM*Y_DIM, 0, 255))); //on rising
-       int c1 = evt.bit.NUM / 8;
-       int c2 = evt.bit.NUM % 8;
-       if (choose_grid[c1][c2] == 1){
-        choose_grid[c1][c2] = 0;
-        trellis.setPixelColor(evt.bit.NUM, 0);
-        Serial.println("Sending info");
-        multicom_send(-1, 4, c1, c2, false);
-       }
-       else {
-        if (checker(c1,c2)) {
-          choose_grid[c1][c2] = 1;
-          trellis.setPixelColor(evt.bit.NUM, 0xFFFFFF);
+    if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_RISING) {
+        int c1 = evt.bit.NUM / 8;
+        int c2 = evt.bit.NUM % 8;
+        if (choose_grid[c1][c2] == 1){
+          choose_grid[c1][c2] = 0;
+          trellis.setPixelColor(evt.bit.NUM, 0);
           Serial.println("Sending info");
-          multicom_send(-1, 4, c1, c2, true);
+          multicom_send(-1, 4, c1, c2, false);
+        }
+        else {
+          if (checker(c1,c2)) {
+            choose_grid[c1][c2] = 1;
+            trellis.setPixelColor(evt.bit.NUM, 0xFFFFFF);
+            Serial.println("Sending info");
+            multicom_send(-1, 4, c1, c2, true);
+            }
+          else{
+            trellis.setPixelColor(evt.bit.NUM, 0x000000);
           }
-         else{
-          trellis.setPixelColor(evt.bit.NUM, 0x000000);
-         }
-       }
+        }
+      }
+  }
+  else if (state == 1) {
+    if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_RISING) {
+        int c1 = evt.bit.NUM / 8;
+        int c2 = evt.bit.NUM % 8;
+        if (grid[c1][c2] == 0) {
+          trellis.setPixelColor(evt.bit.NUM, 0x00FF00);
+          multicom_send(-1, 3, c1, c2, true)
+        }
     }
   }
   trellis.show();
@@ -133,6 +142,7 @@ void drawpad() {
         trellis.setPixelColor(x, y, 0xFF0000);
     }
   }
+  Serial.println("redrawn");
   trellis.show();
 }
 
@@ -193,14 +203,15 @@ void multicom_receive()
     state = mydata.state;
     if (state == 1) {
       drawpad();
-      Serial.println("Drawoad");
+      Serial.println("Drawpad");
     }
     if (state == 2) {
       offpad();
+      Serial.println("Offpad");
     }
   }
   else {
-    if (state == 2) {
+    if (state == 1) {
       if (mydata.push){
         grid[mydata.c1][mydata.c2] = 2;
       }
@@ -208,6 +219,15 @@ void multicom_receive()
         grid[mydata.c1][mydata.c2] = 1;
       }
       drawpad();
+      delay(1000);
+      multicom_send(2, 2, 0, 0, false);
+      delay(50);
+      multicom_send(2, 3, 0, 0, false);
+      delay(50);
+      multicom_send(2, 4, 0, 0, false);
+      delay(50);
+      state = 2;
+      offpad();
     }
     else{
       Serial.println("Unexpected input");

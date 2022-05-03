@@ -13,7 +13,7 @@ EasyTransfer ET;
 
 int state;
 // 0 -> choose warships, 1 -> the player 1 hits the opponent, 2 -> the player 2 hits the opponent, 3 -> end of the game
-int grid[8][8];
+int grid[8][8]; // currently discovered grid of the opponent, 0 -> no try, 1 -> miss, 2 -> ship
 int checker_grid[10][10];
 int choose_grid[8][8];
 
@@ -96,7 +96,6 @@ bool checker(int c1, int c2){
 TrellisCallback blink(keyEvent evt){
   if (state == 0){
   if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_RISING) {
-    trellis.setPixelColor(evt.bit.NUM, Wheel(map(evt.bit.NUM, 0, X_DIM*Y_DIM, 0, 255))); //on rising
        int c1 = evt.bit.NUM / 8;
        int c2 = evt.bit.NUM % 8;
        if (choose_grid[c1][c2] == 1){
@@ -118,6 +117,16 @@ TrellisCallback blink(keyEvent evt){
        }
     }
   }
+  else if (state == 2) {
+    if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_RISING) {
+        int c1 = evt.bit.NUM / 8;
+        int c2 = evt.bit.NUM % 8;
+        if (grid[c1][c2] == 0) {
+          trellis.setPixelColor(evt.bit.NUM, 0x00FF00);
+          multicom_send(-1, 4, c1, c2, true)
+        }
+    }
+  }
   trellis.show();
   return 0;
 }
@@ -133,6 +142,7 @@ void drawpad() {
         trellis.setPixelColor(x, y, 0xFF0000);
     }
   }
+  Serial.println("redrawn");
   trellis.show();
 }
 
@@ -197,6 +207,7 @@ void multicom_receive()
     }
     if (state == 2) {
       drawpad();
+      Serial.println("Drawpad");
     }
   }
   else {
@@ -208,6 +219,15 @@ void multicom_receive()
         grid[mydata.c1][mydata.c2] = 1;
       }
       drawpad();
+      delay(1000);
+      multicom_send(1, 2, 0, 0, false);
+      delay(50);
+      multicom_send(1, 3, 0, 0, false);
+      delay(50);
+      multicom_send(1, 4, 0, 0, false);
+      delay(50);
+      state = 1;
+      offpad();
     }
     else{
       Serial.println("Unexpected input");
