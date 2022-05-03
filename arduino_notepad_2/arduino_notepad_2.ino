@@ -8,8 +8,19 @@
 #define NODEID 2
 #define NUMNODES 4
 
+// defining the possible number of ships
+int ship4cell = 1;
+int ship3cell = 1; 
+int ship2cell = 2; 
+int ship1cell = 2; 
+
 // create object
 EasyTransfer ET;
+
+int state = 0;
+// 0 -> choose warships, 1 -> hit, 2 -> being hit (inactive)
+int grid[8][8];
+int checker_grid[10][10];
 
 struct RECEIVE_DATA_STRUCTURE{
   //put your variable definitions here for the data you want to receive
@@ -27,9 +38,9 @@ RECEIVE_DATA_STRUCTURE mydata;
 //create a matrix of trellis panels
 Adafruit_NeoTrellis t_array[Y_DIM/4][X_DIM/4] = {
   
-  { Adafruit_NeoTrellis(0x32), Adafruit_NeoTrellis(0x33) },
+  { Adafruit_NeoTrellis(0x33), Adafruit_NeoTrellis(0x32) },
 
-  { Adafruit_NeoTrellis(0x34), Adafruit_NeoTrellis(0x35) }
+  { Adafruit_NeoTrellis(0x35), Adafruit_NeoTrellis(0x34) }
   
 };
 
@@ -53,20 +64,82 @@ uint32_t Wheel(byte WheelPos) {
 
 //define a callback for key presses
 TrellisCallback blink(keyEvent evt){
-  
+  if (state == 0){
   if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_RISING) {
     trellis.setPixelColor(evt.bit.NUM, Wheel(map(evt.bit.NUM, 0, X_DIM*Y_DIM, 0, 255))); //on rising
-     multicom_send(3, evt.bit.NUM, true);
+       int c1 = evt.bit.NUM / 8;
+       int c2 = evt.bit.NUM % 8;
+       if (grid[c1][c2] == 1){
+        grid[c1][c2] = 0;
+        trellis.setPixelColor(evt.bit.NUM, 0);
+        Serial.println("Sending info");
+        multicom_send(3, evt.bit.NUM, false);
+       }
+       else {
+        if (checker(c1,c2)) {
+          grid[c1][c2] = 1;
+          trellis.setPixelColor(evt.bit.NUM, 0xFFFFFF);
+          Serial.println("Sending info");
+          multicom_send(3, evt.bit.NUM, true);
+          }
+         else{
+          trellis.setPixelColor(evt.bit.NUM, 0x000000);
+         }
+       }
+     
   }
-  else if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_FALLING) {
-    trellis.setPixelColor(evt.bit.NUM, 0); //off falling
-    multicom_send(3, evt.bit.NUM, false);
+  //else if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_FALLING) {
+  //  trellis.setPixelColor(evt.bit.NUM, 0); //off falling
+  //  multicom_send(4, evt.bit.NUM, false);
+  //}
+
   }
   trellis.show();
   return 0;
 }
 
+bool checker(int c1, int c2){
+  grid[c1][c2] = 1;
+  for (int i = 0; i < 10; i++){
+    for (int j = 0; j < 10; j++){
+      checker_grid[i][j] = 0;
+    }
+  }
+  int num = 1;
+  for (int i = 1; i < 9; i++){
+    for (int j = 1; j < 9; j++){
+      if (grid[i-1][j-1] != 0){
+        checker_grid[i][j] = max(checker_grid[i-1][j], checker_grid[i][j-1]);
+        if (checker_grid[i][j] == 0){
+          checker_grid[i][j] = num;
+          num ++;
+        }
+      }
+    }
+  }
+  int cells[num];
+  for (int i = 0; i < num; i++){
+    cells[i] = 0;
+  }
+  int pix = 0;
+  for (int i = 1; i < 9; i++){
+      for (int j = 1; j < 9; j++){
+        if (checker_grid[i][j] != 0) {
+          cells[checker_grid[i][j]-1] ++;
+          pix++;
+        }
+      }
+  }
+  grid[c1][c2] = 0;
+  return (num-1 <= 6 && pix <= 13);
+}
+
 void setup() {
+  for (int i = 0; i < 8; i++){
+    for(int j = 0; j < 8; j++){ 
+      grid[i][j] = 0 ;
+    }
+  }
   Serial.begin(9600);
   //while(!Serial) delay(1);
   ET.begin(details(mydata), &Serial);
@@ -81,7 +154,7 @@ void setup() {
   for(int i=0; i<Y_DIM*X_DIM; i++){
       trellis.setPixelColor(i, Wheel(map(i, 0, X_DIM*Y_DIM, 0, 255))); //addressed with keynum
       trellis.show();
-      delay(50);
+      delay(10);
   }
   
   for(int y=0; y<Y_DIM; y++){
@@ -92,7 +165,7 @@ void setup() {
       trellis.registerCallback(x, y, blink);
       trellis.setPixelColor(x, y, 0x000000); //addressed with x,y
       trellis.show(); //show all LEDs
-      delay(50);
+      delay(10);
     }
   }
 
@@ -107,10 +180,21 @@ void loop() {
 
 void multicom_receive()
 {
+  if (mydata.coor == -1) {
+    Serial.println("State changed to zero");
+    state = 0;
+  }
+  else if (mydata.coor == -2){
+    state = 1;
+  }
+  else if (mydata.coor == -3){
+    state = 2;
+  }
   Serial.println(mydata.from);
   Serial.println(mydata.to);
   Serial.println(mydata.coor);
   Serial.println(mydata.rise);
+  Serial.println(mydata.first);
 }
 
 void multicom_send(char to, int coor, bool rise)
@@ -119,7 +203,7 @@ void multicom_send(char to, int coor, bool rise)
   mydata.to = to;
   mydata.coor = coor ; 
   mydata.rise = rise ;
-  mydata.first = false;
+  mydata.first = false ;
   ET.sendData(); 
 }
 
