@@ -99,9 +99,14 @@ void multicom_send(int state, char to, int c1, int c2, bool push)
 
 void multicom_receive()
 {
-  Serial.println(mydata.from);
-  Serial.println(mydata.to);
-  Serial.println(mydata.coor);
-  Serial.println(mydata.rise);
-  Serial.println(mydata.first);
+    if (state==0){
+    int c2 = mydata.coor / 8;
+    int c1 = mydata.coor % 8;
+    if (mydata.rise){
+      grid[c1][c2] = 1;
+    }
+    else {
+      grid[c1][c2] = 0;
+    }
+  }
 }

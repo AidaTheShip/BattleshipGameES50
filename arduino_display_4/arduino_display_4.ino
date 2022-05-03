@@ -117,10 +117,10 @@ void multicom_receive()
     int c2 = mydata.coor / 8;
     int c1 = mydata.coor % 8;
     if (mydata.rise){
-      notepadgrid[c1][c2] = 1;
+      grid[c1][c2] = 1;
     }
     else {
-      notepadgrid[c1][c2] = 0;
+      grid[c1][c2] = 0;
     }
   }
 }
