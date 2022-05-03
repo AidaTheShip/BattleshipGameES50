@@ -22,8 +22,8 @@ struct RECEIVE_DATA_STRUCTURE{
 
 RECEIVE_DATA_STRUCTURE mydata;
 
-int state = 0;
-// 0 -> choose warships, 1 -> the player hits the opponent, 2 -> the player is being hit (inactive), 3 -> end of the game
+int state;
+// 0 -> choose warships, 1 -> the player 1 hits the opponent, 2 -> the player 2 hits the opponent, 3 -> end of the game
 int choose_grid[8][8]; // grid of warships I am choosing, 0 -> no ship, 1 -> ship
 int checker_grid[10][10]; // helper grid
 int grid[8][8]; // currently discovered grid of the opponent, 0 -> no try, 1 -> miss, 2 -> ship
@@ -144,6 +144,7 @@ void offpad() {
 }
 
 void setup() {
+  state=0;
   Serial.begin(9600);
   //while(!Serial) delay(1);
   ET.begin(details(mydata), &Serial);
@@ -180,7 +181,6 @@ void loop() {
   multicom_update();
   trellis.read();
   delay(20);
-  
 }
 
 void multicom_receive()

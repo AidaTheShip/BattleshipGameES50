@@ -11,8 +11,8 @@
 // create object
 EasyTransfer ET;
 
-int state = 0;
-// 0 -> choose warships, 1 -> hit, 2 -> being hit (inactive)
+int state;
+// 0 -> choose warships, 1 -> the player 1 hits the opponent, 2 -> the player 2 hits the opponent, 3 -> end of the game
 int grid[8][8];
 int checker_grid[10][10];
 
@@ -143,6 +143,7 @@ void offpad() {
 }
 
 void setup() {
+  state = 0;
   Serial.begin(9600);
   //while(!Serial) delay(1);
   ET.begin(details(mydata), &Serial);
@@ -187,12 +188,12 @@ void multicom_receive()
   if (mydata.state != -1){
     state = mydata.state;
     if (state == 1)
-      drawpad();
-    if (state == 2)
       offpad();
+    if (state == 2)
+      drawpad();
   }
   else {
-    if (state == 1) {
+    if (state == 2) {
       if (mydata.push){
         grid[c1][c2] = 2;
       }
@@ -223,7 +224,7 @@ void multicom_update()
  while(ET.receiveData())
   {
      if (mydata.to == NODEID) {
-        Serial.println("Node 1 received info");
+        Serial.println("Node 2 received info");
         multicom_receive();
      }
   }

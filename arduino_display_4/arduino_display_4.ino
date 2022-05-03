@@ -17,8 +17,9 @@
 
 RGBmatrixPanel matrix(A, B, C, CLK, LAT, OE, false);
  
-int state=0;
-int notepadgrid[8][8];
+int state;
+// 0 -> choose warships, 1 -> the player 1 hits the opponent, 2 -> the player 2 hits the opponent, 3 -> end of the game
+int grid[8][8]; // currently discovered grid of the opponent, 0 -> no try, 1 -> miss, 2 -> ship
 
 EasyTransfer ET;
 
@@ -33,12 +34,10 @@ struct RECEIVE_DATA_STRUCTURE{
 
 RECEIVE_DATA_STRUCTURE mydata;
 
-uint8_t r = 0, g = 0, b = 0;
 void timer() {
     for(uint8_t x = 0; x < 32; x++){
       for(uint8_t y = 0; y < 16; y++){
-        r = 7 ;
-        matrix.drawPixel(x, y, matrix.Color333(r, g, b));
+        matrix.drawPixel(x, y, matrix.Color333(7, 0, 0));
       }
       for (int j = 0; j < 100; j++) {
         multicom_update();
@@ -49,6 +48,7 @@ void timer() {
 
 
 void setup() {
+  state=0;
   Serial.begin(9600);
   matrix.begin();
   ET.begin(details(mydata), &Serial);
@@ -58,13 +58,6 @@ void setup() {
       grid[i][j]=0;
     }
   }
-  multicom_send(1, 0, 0, 0, false);
-  for (int i = 0; i < 8; i++){
-    for(int j = 0; j < 8; j++){ 
-      grid[i][j] = 0 ;
-    }
-  }
-  Serial.println("starting Arduino 4 (display)");
     for(uint8_t x = 0; x < 32; x++){
       for(uint8_t y = 0; y < 16; y++){
         matrix.drawPixel(x, y, matrix.Color333(7, 7, 7));
@@ -90,7 +83,7 @@ void setup() {
   delay(1000);
   multicom_send(1, 1, 0, 0, false);
   delay(10);
-  multicom_send(2, 2, 0, 0, false);
+  multicom_send(1, 2, 0, 0, false);
 }
 
 void loop() {
