@@ -9,21 +9,72 @@
 EasyTransfer ET;
 
 struct RECEIVE_DATA_STRUCTURE{
-  //put your variable definitions here for the data you want to receive
-  //THIS MUST BE EXACTLY THE SAME ON THE OTHER ARDUINO
+  int state;
   char from;
   char to;
-  int coor;
-  bool rise;
-  bool first;
+  int c1;
+  int c2;
+  bool push;
 };
 
 RECEIVE_DATA_STRUCTURE mydata;
 
+int state = 0;
+// 0 -> choose warships, 1 -> the player hits the opponent, 2 -> the player is being hit (inactive), 3 -> end of the game
+int grid[8][8]; // currently discovered grid of the opponent, 0 -> no try, 1 -> miss, 2 -> ship
+
+void timer() {
+  for(uint8_t x = 0; x < 32; x++){
+    for(uint8_t y = 0; y < 16; y++){
+      matrix.drawPixel(x, y, matrix.Color333(7, 0, 0));
+    }
+    for (int j = 0; j < 100; j++) {
+      multicom_update();
+      delay(10);
+    }
+  }
+}
+
 void setup() {
   Serial.begin(9600);
+  matrix.begin();
   ET.begin(details(mydata), &Serial);
   Serial.println("starting Arduino 3 (display)");
+  for (int i = 0; i < 8; i++){
+    for (int j = 0; j < 8; j++){
+      grid[i][j]=0;
+    }
+  }
+  multicom_send(2, 0, 0, 0, false);
+  for (int i = 0; i < 8; i++){
+    for(int j = 0; j < 8; j++){ 
+      grid[i][j] = 0 ;
+    }
+  }
+  Serial.println("starting Arduino 3 (display)");
+    for(uint8_t x = 0; x < 32; x++){
+      for(uint8_t y = 0; y < 16; y++){
+        matrix.drawPixel(x, y, matrix.Color333(7, 7, 7));
+      }
+  }
+  timer ();
+  for(uint8_t x = 0; x < 16; x++){
+    for(uint8_t y = 0; y < 16; y++){
+      matrix.drawPixel(x, y, matrix.Color333(0, 0, 0));
+    }
+  }
+  for(uint8_t x = 16; x < 32; x++){
+    for(uint8_t y = 0; y < 16; y++){
+      if (grid[(x-16)/2][y/2] == 1){
+        matrix.drawPixel(x, y, matrix.Color333(7, 7, 7));
+      }
+      else{
+        matrix.drawPixel(x, y, matrix.Color333(0, 0, 7));        
+      }
+    }
+  }
+  state=2;
+  delay(1000);
 }
 
 void loop() {
@@ -41,14 +92,15 @@ void multicom_update()
   }
 }
 
-void multicom_send(char to, int coor, bool rise, bool first)
+void multicom_send(int state, char to, int c1, int c2, bool push)
 {
-  mydata.from = NODEID;
-  mydata.to = to;
-  mydata.coor = coor ; 
-  mydata.rise = rise ;
-  mydata.first = first;
-  ET.sendData(); 
+  mydata.state = state ;
+  mydata.from = NODEID ;
+  mydata.to = to ;
+  mydata.c1 = c1 ; 
+  mydata.c2 = c2 ;
+  mydata.push = push ;
+  ET.sendData() ; 
 }
 
 void multicom_receive()

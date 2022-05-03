@@ -16,20 +16,19 @@
 #define C A2
 
 RGBmatrixPanel matrix(A, B, C, CLK, LAT, OE, false);
-
+ 
 int state=0;
 int notepadgrid[8][8];
 
 EasyTransfer ET;
 
 struct RECEIVE_DATA_STRUCTURE{
-  //put your variable definitions here for the data you want to receive
-  //THIS MUST BE EXACTLY THE SAME ON THE OTHER ARDUINO
+  int state;
   char from;
   char to;
-  int coor;
-  bool rise;
-  bool first;
+  int c1;
+  int c2;
+  bool push;
 };
 
 RECEIVE_DATA_STRUCTURE mydata;
@@ -53,10 +52,16 @@ void setup() {
   Serial.begin(9600);
   matrix.begin();
   ET.begin(details(mydata), &Serial);
-  multicom_send(1,-1,false,false);
+  Serial.println("starting Arduino 4 (display)");
+  for (int i = 0; i < 8; i++){
+    for (int j = 0; j < 8; j++){
+      grid[i][j]=0;
+    }
+  }
+  multicom_send(1, 0, 0, 0, false);
   for (int i = 0; i < 8; i++){
     for(int j = 0; j < 8; j++){ 
-      notepadgrid[i][j] = 0 ;
+      grid[i][j] = 0 ;
     }
   }
   Serial.println("starting Arduino 4 (display)");
@@ -64,40 +69,28 @@ void setup() {
       for(uint8_t y = 0; y < 16; y++){
         matrix.drawPixel(x, y, matrix.Color333(7, 7, 7));
       }
+  }
+  timer ();
+  for(uint8_t x = 0; x < 16; x++){
+    for(uint8_t y = 0; y < 16; y++){
+      matrix.drawPixel(x, y, matrix.Color333(0, 0, 0));
     }
-    timer ();
-   for(uint8_t x = 0; x < 32; x++){
-      for(uint8_t y = 0; y < 16; y++){
-        if (x >= 8 || y >= 8) {
-          matrix.drawPixel(x, y, matrix.Color333(4, 4, 4));
-        }
-        else if (notepadgrid[x][y] == 1){
-          matrix.drawPixel(x, y, matrix.Color333(7, 7, 7));
-        }
-        else {
-          matrix.drawPixel(x, y, matrix.Color333(0, 0, 0));
-        }
+  }
+  for(uint8_t x = 16; x < 32; x++){
+    for(uint8_t y = 0; y < 16; y++){
+      if (grid[(x-16)/2][y/2] == 1){
+        matrix.drawPixel(x, y, matrix.Color333(7, 7, 7));
+      }
+      else{
+        matrix.drawPixel(x, y, matrix.Color333(0, 0, 7));        
       }
     }
-    for(uint8_t x = 0; x < 16; x++){
-      for(uint8_t y = 0; y < 16; y++){
-        matrix.drawPixel(x, y, matrix.Color333(0, 0, 0));
-      }
-    }
-    for(uint8_t x = 16; x < 32; x++){
-      for(uint8_t y = 0; y < 16; y++){
-        if (notepadgrid[(x-16)/2][y/2] == 1){
-          matrix.drawPixel(x, y, matrix.Color333(7, 7, 7));
-        }
-        else{
-          matrix.drawPixel(x, y, matrix.Color333(0, 0, 7));        
-        }
-      }
-    }
-    delay(1000);
-    multicom_send(1, -2, false, false);
-    delay(20);
-    multicom_send(2, -3, false, false);
+  }
+  state=1;
+  delay(1000);
+  multicom_send(1, 1, 0, 0, false);
+  delay(10);
+  multicom_send(2, 2, 0, 0, false);
 }
 
 void loop() {

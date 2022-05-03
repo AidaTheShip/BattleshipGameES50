@@ -8,12 +8,6 @@
 #define NODEID 2
 #define NUMNODES 4
 
-// defining the possible number of ships
-int ship4cell = 1;
-int ship3cell = 1; 
-int ship2cell = 2; 
-int ship1cell = 2; 
-
 // create object
 EasyTransfer ET;
 
@@ -23,13 +17,12 @@ int grid[8][8];
 int checker_grid[10][10];
 
 struct RECEIVE_DATA_STRUCTURE{
-  //put your variable definitions here for the data you want to receive
-  //THIS MUST BE EXACTLY THE SAME ON THE OTHER ARDUINO
+  int state;
   char from;
   char to;
-  int coor;
-  bool rise;
-  bool first;
+  int c1;
+  int c2;
+  bool push;
 };
 
 RECEIVE_DATA_STRUCTURE mydata;
@@ -59,42 +52,6 @@ uint32_t Wheel(byte WheelPos) {
    WheelPos -= 170;
    return seesaw_NeoPixel::Color(0, WheelPos * 3, 255 - WheelPos * 3);
   }
-  return 0;
-}
-
-//define a callback for key presses
-TrellisCallback blink(keyEvent evt){
-  if (state == 0){
-  if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_RISING) {
-    trellis.setPixelColor(evt.bit.NUM, Wheel(map(evt.bit.NUM, 0, X_DIM*Y_DIM, 0, 255))); //on rising
-       int c1 = evt.bit.NUM / 8;
-       int c2 = evt.bit.NUM % 8;
-       if (grid[c1][c2] == 1){
-        grid[c1][c2] = 0;
-        trellis.setPixelColor(evt.bit.NUM, 0);
-        Serial.println("Sending info");
-        multicom_send(3, evt.bit.NUM, false);
-       }
-       else {
-        if (checker(c1,c2)) {
-          grid[c1][c2] = 1;
-          trellis.setPixelColor(evt.bit.NUM, 0xFFFFFF);
-          Serial.println("Sending info");
-          multicom_send(3, evt.bit.NUM, true);
-          }
-         else{
-          trellis.setPixelColor(evt.bit.NUM, 0x000000);
-         }
-       }
-     
-  }
-  //else if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_FALLING) {
-  //  trellis.setPixelColor(evt.bit.NUM, 0); //off falling
-  //  multicom_send(4, evt.bit.NUM, false);
-  //}
-
-  }
-  trellis.show();
   return 0;
 }
 
@@ -134,16 +91,62 @@ bool checker(int c1, int c2){
   return (num-1 <= 6 && pix <= 13);
 }
 
-void setup() {
-  for (int i = 0; i < 8; i++){
-    for(int j = 0; j < 8; j++){ 
-      grid[i][j] = 0 ;
+//define a callback for key presses
+TrellisCallback blink(keyEvent evt){
+  if (state == 0){
+  if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_RISING) {
+    trellis.setPixelColor(evt.bit.NUM, Wheel(map(evt.bit.NUM, 0, X_DIM*Y_DIM, 0, 255))); //on rising
+       int c1 = evt.bit.NUM / 8;
+       int c2 = evt.bit.NUM % 8;
+       if (grid[c1][c2] == 1){
+        grid[c1][c2] = 0;
+        trellis.setPixelColor(evt.bit.NUM, 0);
+        Serial.println("Sending info");
+        multicom_send(-1, 3, c1, c2, false);
+       }
+       else {
+        if (checker(c1,c2)) {
+          grid[c1][c2] = 1;
+          trellis.setPixelColor(evt.bit.NUM, 0xFFFFFF);
+          Serial.println("Sending info");
+          multicom_send(-1, 3, c1, c2, true);
+          }
+         else{
+          trellis.setPixelColor(evt.bit.NUM, 0x000000);
+         }
+       }
     }
   }
+  trellis.show();
+  return 0;
+}
+
+void drawpad() {
+  for(int y=0; y<Y_DIM; y++){
+    for(int x=0; x<X_DIM; x++){
+      if (grid[x][y] == 0)
+        trellis.setPixelColor(x, y, 0x0000FF);
+      if (grid[x][y] == 1)
+        trellis.setPixelColor(x, y, 0xFFFFFF);
+      if (grid[x][y] == 2)
+        trellis.setPixelColor(x, y, 0xFF0000);
+    }
+  }
+}
+
+void offpad() {
+  for(int y=0; y<Y_DIM; y++){
+    for(int x=0; x<X_DIM; x++){
+      trellis.setPixelColor(x, y, 0x000000);
+    }
+  }
+}
+
+void setup() {
   Serial.begin(9600);
   //while(!Serial) delay(1);
   ET.begin(details(mydata), &Serial);
-  Serial.println("starting Arduino 2 (notepad)");
+  Serial.println("Starting Arduino 2 (notepad)");
 
   if(!trellis.begin()){
     Serial.println("failed to begin trellis");
@@ -159,6 +162,8 @@ void setup() {
   
   for(int y=0; y<Y_DIM; y++){
     for(int x=0; x<X_DIM; x++){
+      choose_grid[x][y] = 0;
+      grid[x][y] = 0;
       //activate rising and falling edges on all keys
       trellis.activateKey(x, y, SEESAW_KEYPAD_EDGE_RISING, true);
       trellis.activateKey(x, y, SEESAW_KEYPAD_EDGE_FALLING, true);
@@ -168,7 +173,6 @@ void setup() {
       delay(10);
     }
   }
-
 }
 
 void loop() {
@@ -180,31 +184,38 @@ void loop() {
 
 void multicom_receive()
 {
-  if (mydata.coor == -1) {
-    Serial.println("State changed to zero");
-    state = 0;
+  if (mydata.state != -1){
+    state = mydata.state;
+    if (state == 1)
+      drawpad();
+    if (state == 2)
+      offpad();
   }
-  else if (mydata.coor == -2){
-    state = 1;
+  else {
+    if (state == 1) {
+      if (mydata.push){
+        grid[c1][c2] = 2;
+      }
+      else{
+        grid[c1][c2] = 1;
+      }
+      drawpad();
+    }
+    else{
+      Serial.println("Unexpected input");
+    }
   }
-  else if (mydata.coor == -3){
-    state = 2;
-  }
-  Serial.println(mydata.from);
-  Serial.println(mydata.to);
-  Serial.println(mydata.coor);
-  Serial.println(mydata.rise);
-  Serial.println(mydata.first);
 }
 
-void multicom_send(char to, int coor, bool rise)
+void multicom_send(int state, char to, int c1, int c2, bool push)
 {
-  mydata.from = NODEID;
-  mydata.to = to;
-  mydata.coor = coor ; 
-  mydata.rise = rise ;
-  mydata.first = false ;
-  ET.sendData(); 
+  mydata.state = state ;
+  mydata.from = NODEID ;
+  mydata.to = to ;
+  mydata.c1 = c1 ; 
+  mydata.c2 = c2 ;
+  mydata.push = push ;
+  ET.sendData() ; 
 }
 
 void multicom_update()
@@ -212,7 +223,7 @@ void multicom_update()
  while(ET.receiveData())
   {
      if (mydata.to == NODEID) {
-        Serial.println("Node 2 received info");
+        Serial.println("Node 1 received info");
         multicom_receive();
      }
   }
