@@ -5,11 +5,17 @@
 #define Y_DIM 8 //number of rows of key
 #define X_DIM 8 //number of columns of keys
 
-#define NODEID 1 
+#define NODEID 1
 #define NUMNODES 4
 
 // create object
 EasyTransfer ET;
+
+int state;
+// 0 -> choose warships, 1 -> the player 1 hits the opponent, 2 -> the player 2 hits the opponent, 3 -> end of the game
+int grid[8][8];
+int checker_grid[10][10];
+int choose_grid[8][8];
 
 struct RECEIVE_DATA_STRUCTURE{
   int state;
@@ -22,18 +28,14 @@ struct RECEIVE_DATA_STRUCTURE{
 
 RECEIVE_DATA_STRUCTURE mydata;
 
-int state;
-// 0 -> choose warships, 1 -> the player 1 hits the opponent, 2 -> the player 2 hits the opponent, 3 -> end of the game
-int choose_grid[8][8]; // grid of warships I am choosing, 0 -> no ship, 1 -> ship
-int checker_grid[10][10]; // helper grid
-int grid[8][8]; // currently discovered grid of the opponent, 0 -> no try, 1 -> miss, 2 -> ship
-
 
 //create a matrix of trellis panels
 Adafruit_NeoTrellis t_array[Y_DIM/4][X_DIM/4] = {
-  { Adafruit_NeoTrellis(0x2E), Adafruit_NeoTrellis(0x2F) },
+  
+  { Adafruit_NeoTrellis(0x2F), Adafruit_NeoTrellis(0x2E) },
 
   { Adafruit_NeoTrellis(0x31), Adafruit_NeoTrellis(0x30) }
+  
 };
 
 //pass this matrix to the multitrellis object
@@ -54,7 +56,6 @@ uint32_t Wheel(byte WheelPos) {
   return 0;
 }
 
-// checker function
 bool checker(int c1, int c2){
   choose_grid[c1][c2] = 1;
   for (int i = 0; i < 10; i++){
@@ -65,7 +66,7 @@ bool checker(int c1, int c2){
   int num = 1;
   for (int i = 1; i < 9; i++){
     for (int j = 1; j < 9; j++){
-      if (grid[i-1][j-1] != 0){
+      if (choose_grid[i-1][j-1] != 0){
         checker_grid[i][j] = max(checker_grid[i-1][j], checker_grid[i][j-1]);
         if (checker_grid[i][j] == 0){
           checker_grid[i][j] = num;
@@ -94,30 +95,29 @@ bool checker(int c1, int c2){
 //define a callback for key presses
 TrellisCallback blink(keyEvent evt){
   if (state == 0){
-    if (evt.bit.EDGE == SEESAW_KEYPAD_EDGE_RISING) {
-      trellis.setPixelColor(evt.bit.NUM, Wheel(map(evt.bit.NUM, 0, X_DIM*Y_DIM, 0, 255))); //on rising
-      int c1 = evt.bit.NUM / 8;
-      int c2 = evt.bit.NUM % 8;
-      if (choose_grid[c1][c2] == 1){
+  if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_RISING) {
+    trellis.setPixelColor(evt.bit.NUM, Wheel(map(evt.bit.NUM, 0, X_DIM*Y_DIM, 0, 255))); //on rising
+       int c1 = evt.bit.NUM / 8;
+       int c2 = evt.bit.NUM % 8;
+       if (choose_grid[c1][c2] == 1){
         choose_grid[c1][c2] = 0;
         trellis.setPixelColor(evt.bit.NUM, 0);
         Serial.println("Sending info");
         multicom_send(-1, 4, c1, c2, false);
-      }
-      else {
-        if (checker (c1,c2)) {
+       }
+       else {
+        if (checker(c1,c2)) {
           choose_grid[c1][c2] = 1;
           trellis.setPixelColor(evt.bit.NUM, 0xFFFFFF);
           Serial.println("Sending info");
           multicom_send(-1, 4, c1, c2, true);
           }
-        else{
+         else{
           trellis.setPixelColor(evt.bit.NUM, 0x000000);
-        }
-      }
+         }
+       }
     }
   }
-
   trellis.show();
   return 0;
 }
@@ -133,18 +133,21 @@ void drawpad() {
         trellis.setPixelColor(x, y, 0xFF0000);
     }
   }
+  trellis.show();
 }
 
 void offpad() {
   for(int y=0; y<Y_DIM; y++){
     for(int x=0; x<X_DIM; x++){
       trellis.setPixelColor(x, y, 0x000000);
+      Serial.println("set off");
     }
   }
+  trellis.show();
 }
 
 void setup() {
-  state=0;
+  state = 0;
   Serial.begin(9600);
   //while(!Serial) delay(1);
   ET.begin(details(mydata), &Serial);
@@ -181,24 +184,28 @@ void loop() {
   multicom_update();
   trellis.read();
   delay(20);
+  
 }
 
 void multicom_receive()
 {
   if (mydata.state != -1){
     state = mydata.state;
-    if (state == 1)
+    if (state == 1) {
       drawpad();
-    if (state == 2)
+      Serial.println("Drawoad");
+    }
+    if (state == 2) {
       offpad();
+    }
   }
   else {
-    if (state == 1) {
+    if (state == 2) {
       if (mydata.push){
-        grid[c1][c2] = 2;
+        grid[mydata.c1][mydata.c2] = 2;
       }
       else{
-        grid[c1][c2] = 1;
+        grid[mydata.c1][mydata.c2] = 1;
       }
       drawpad();
     }
@@ -206,6 +213,7 @@ void multicom_receive()
       Serial.println("Unexpected input");
     }
   }
+  
 }
 
 void multicom_send(int state, char to, int c1, int c2, bool push)

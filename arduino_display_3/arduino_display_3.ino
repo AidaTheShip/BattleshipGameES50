@@ -2,9 +2,17 @@
 
 // you can use softserial like this
 #include <SoftwareSerial.h>
+#include <RGBmatrixPanel.h>
 
 #define NODEID 3
 #define NUMNODES 4; 
+
+#define CLK  8 
+#define OE   9
+#define LAT 10
+#define A   A0
+#define B   A1
+#define C   A2
 
 EasyTransfer ET;
 
@@ -22,6 +30,8 @@ RECEIVE_DATA_STRUCTURE mydata;
 int state;
 // 0 -> choose warships, 1 -> the player 1 hits the opponent, 2 -> the player 2 hits the opponent, 3 -> end of the game
 int grid[8][8]; // currently discovered grid of the opponent, 0 -> no try, 1 -> miss, 2 -> ship
+
+RGBmatrixPanel matrix(A, B, C, CLK, LAT, OE, false);
 
 void timer() {
   for(uint8_t x = 0; x < 32; x++){
@@ -100,13 +110,11 @@ void multicom_send(int state, char to, int c1, int c2, bool push)
 void multicom_receive()
 {
     if (state==0){
-    int c2 = mydata.coor / 8;
-    int c1 = mydata.coor % 8;
-    if (mydata.rise){
-      grid[c1][c2] = 1;
+    if (mydata.push){
+      grid[mydata.c2][mydata.c1] = 1;
     }
     else {
-      grid[c1][c2] = 0;
+      grid[mydata.c2][mydata.c1] = 0;
     }
   }
 }

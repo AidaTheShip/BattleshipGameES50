@@ -81,9 +81,10 @@ void setup() {
   }
   state=1;
   delay(1000);
-  multicom_send(1, 1, 0, 0, false);
-  delay(10);
   multicom_send(1, 2, 0, 0, false);
+  delay(100);
+  multicom_send(1, 1, 0, 0, false);
+  delay(100);
 }
 
 void loop() {
@@ -101,26 +102,25 @@ void multicom_update()
   }
 }
 
-void multicom_send(char to, int coor, bool rise, bool first)
+void multicom_send(int state, char to, int c1, int c2, bool push)
 {
-  mydata.from = NODEID;
-  mydata.to = to;
-  mydata.coor = coor ; 
-  mydata.rise = rise ;
-  mydata.first = first;
-  ET.sendData(); 
+  mydata.state = state ;
+  mydata.from = NODEID ;
+  mydata.to = to ;
+  mydata.c1 = c1 ; 
+  mydata.c2 = c2 ;
+  mydata.push = push ;
+  ET.sendData() ; 
 }
 
 void multicom_receive()
 {
   if (state==0){
-    int c2 = mydata.coor / 8;
-    int c1 = mydata.coor % 8;
-    if (mydata.rise){
-      grid[c1][c2] = 1;
+    if (mydata.push){
+      grid[mydata.c2][mydata.c1] = 1;
     }
     else {
-      grid[c1][c2] = 0;
+      grid[mydata.c2][mydata.c1] = 0;
     }
   }
 }

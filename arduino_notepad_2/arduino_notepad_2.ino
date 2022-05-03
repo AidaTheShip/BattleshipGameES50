@@ -15,6 +15,7 @@ int state;
 // 0 -> choose warships, 1 -> the player 1 hits the opponent, 2 -> the player 2 hits the opponent, 3 -> end of the game
 int grid[8][8];
 int checker_grid[10][10];
+int choose_grid[8][8];
 
 struct RECEIVE_DATA_STRUCTURE{
   int state;
@@ -56,7 +57,7 @@ uint32_t Wheel(byte WheelPos) {
 }
 
 bool checker(int c1, int c2){
-  grid[c1][c2] = 1;
+  choose_grid[c1][c2] = 1;
   for (int i = 0; i < 10; i++){
     for (int j = 0; j < 10; j++){
       checker_grid[i][j] = 0;
@@ -65,7 +66,7 @@ bool checker(int c1, int c2){
   int num = 1;
   for (int i = 1; i < 9; i++){
     for (int j = 1; j < 9; j++){
-      if (grid[i-1][j-1] != 0){
+      if (choose_grid[i-1][j-1] != 0){
         checker_grid[i][j] = max(checker_grid[i-1][j], checker_grid[i][j-1]);
         if (checker_grid[i][j] == 0){
           checker_grid[i][j] = num;
@@ -87,7 +88,7 @@ bool checker(int c1, int c2){
         }
       }
   }
-  grid[c1][c2] = 0;
+  choose_grid[c1][c2] = 0;
   return (num-1 <= 6 && pix <= 13);
 }
 
@@ -98,15 +99,15 @@ TrellisCallback blink(keyEvent evt){
     trellis.setPixelColor(evt.bit.NUM, Wheel(map(evt.bit.NUM, 0, X_DIM*Y_DIM, 0, 255))); //on rising
        int c1 = evt.bit.NUM / 8;
        int c2 = evt.bit.NUM % 8;
-       if (grid[c1][c2] == 1){
-        grid[c1][c2] = 0;
+       if (choose_grid[c1][c2] == 1){
+        choose_grid[c1][c2] = 0;
         trellis.setPixelColor(evt.bit.NUM, 0);
         Serial.println("Sending info");
         multicom_send(-1, 3, c1, c2, false);
        }
        else {
         if (checker(c1,c2)) {
-          grid[c1][c2] = 1;
+          choose_grid[c1][c2] = 1;
           trellis.setPixelColor(evt.bit.NUM, 0xFFFFFF);
           Serial.println("Sending info");
           multicom_send(-1, 3, c1, c2, true);
@@ -132,14 +133,17 @@ void drawpad() {
         trellis.setPixelColor(x, y, 0xFF0000);
     }
   }
+  trellis.show();
 }
 
 void offpad() {
   for(int y=0; y<Y_DIM; y++){
     for(int x=0; x<X_DIM; x++){
       trellis.setPixelColor(x, y, 0x000000);
+      Serial.println("set off");
     }
   }
+  trellis.show();
 }
 
 void setup() {
@@ -187,18 +191,21 @@ void multicom_receive()
 {
   if (mydata.state != -1){
     state = mydata.state;
-    if (state == 1)
+    if (state == 1) {
       offpad();
-    if (state == 2)
+      Serial.println("Offpad");
+    }
+    if (state == 2) {
       drawpad();
+    }
   }
   else {
     if (state == 2) {
       if (mydata.push){
-        grid[c1][c2] = 2;
+        grid[mydata.c1][mydata.c2] = 2;
       }
       else{
-        grid[c1][c2] = 1;
+        grid[mydata.c1][mydata.c2] = 1;
       }
       drawpad();
     }
@@ -206,6 +213,7 @@ void multicom_receive()
       Serial.println("Unexpected input");
     }
   }
+  
 }
 
 void multicom_send(int state, char to, int c1, int c2, bool push)
