@@ -13,8 +13,11 @@ EasyTransfer ET;
 
 int state;
 // 0 -> choose warships, 1 -> the player 1 hits the opponent, 2 -> the player 2 hits the opponent, 3 -> end of the game
+// normal grid
 int grid[8][8];
+// your ships to keep track of whether your opponent hits you 
 int checker_grid[10][10];
+// grid that stores where the other opponent hit you
 int choose_grid[8][8];
 
 struct RECEIVE_DATA_STRUCTURE{
@@ -42,7 +45,7 @@ Adafruit_NeoTrellis t_array[Y_DIM/4][X_DIM/4] = {
 Adafruit_MultiTrellis trellis((Adafruit_NeoTrellis *)t_array, Y_DIM/4, X_DIM/4);
 
 // Input a value 0 to 255 to get a color value.
-// The colors are a transition r - g - b - back to r.
+// at the very beginning starting
 uint32_t Wheel(byte WheelPos) {
   if(WheelPos < 85) {
    return seesaw_NeoPixel::Color(WheelPos * 3, 255 - WheelPos * 3, 0);
@@ -56,6 +59,7 @@ uint32_t Wheel(byte WheelPos) {
   return 0;
 }
 
+// checks if there is the correct number of ships - only during the countdown
 bool checker(int c1, int c2){
   choose_grid[c1][c2] = 1;
   for (int i = 0; i < 10; i++){
@@ -94,14 +98,18 @@ bool checker(int c1, int c2){
 
 //define a callback for key presses
 TrellisCallback blink(keyEvent evt){
+  // if we are choosing ships
   if (state == 0){
     if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_RISING) {
         int c1 = evt.bit.NUM / 8;
         int c2 = evt.bit.NUM % 8;
+        // if the player has already chosen the pixel, it will turn of again, and the information 
+        // will be transfered
         if (choose_grid[c1][c2] == 1){
           choose_grid[c1][c2] = 0;
           trellis.setPixelColor(evt.bit.NUM, 0);
           Serial.println("Sending info");
+          // information sent to the Display
           multicom_send(-1, 4, c1, c2, false);
         }
         else {
@@ -109,6 +117,7 @@ TrellisCallback blink(keyEvent evt){
             choose_grid[c1][c2] = 1;
             trellis.setPixelColor(evt.bit.NUM, 0xFFFFFF);
             Serial.println("Sending info");
+            // state -1 means that we are just sending the coordinates!
             multicom_send(-1, 4, c1, c2, true);
             }
           else{
@@ -117,20 +126,26 @@ TrellisCallback blink(keyEvent evt){
         }
       }
   }
+  // if it is player ones turn to hit
   else if (state == 1) {
     if(evt.bit.EDGE == SEESAW_KEYPAD_EDGE_RISING) {
         int c1 = evt.bit.NUM / 8;
         int c2 = evt.bit.NUM % 8;
         if (grid[c1][c2] == 0) {
           trellis.setPixelColor(evt.bit.NUM, 0x00FF00);
-          multicom_send(-1, 3, c1, c2, true)
+          // sending the coordinate where we hit to the display of the other player
+          // in the code of the other player, there has to be a line of code, where it checks if
+          // that coordinate is in the thing
+          multicom_send(-1, 3, c1, c2, true);
         }
     }
   }
+  // showing the trellis after everything is done
   trellis.show();
   return 0;
 }
 
+// draws on the pad depending if the opponent was hit or not
 void drawpad() {
   for(int y=0; y<Y_DIM; y++){
     for(int x=0; x<X_DIM; x++){
@@ -150,14 +165,15 @@ void offpad() {
   for(int y=0; y<Y_DIM; y++){
     for(int x=0; x<X_DIM; x++){
       trellis.setPixelColor(x, y, 0x000000);
-      Serial.println("set off");
     }
   }
+  Serial.println("set off");
   trellis.show();
 }
 
 void setup() {
   state = 0;
+  // general set upeof the trellis
   Serial.begin(9600);
   //while(!Serial) delay(1);
   ET.begin(details(mydata), &Serial);
@@ -168,13 +184,13 @@ void setup() {
     while(1) delay(1);
   }
 
-  /* the array can be addressed as x,y or with the key number */
+  /* the array can be addressed as x,y or with the key number, drawing the beginning sequence */
   for(int i=0; i<Y_DIM*X_DIM; i++){
       trellis.setPixelColor(i, Wheel(map(i, 0, X_DIM*Y_DIM, 0, 255))); //addressed with keynum
       trellis.show();
       delay(10);
   }
-  
+
   for(int y=0; y<Y_DIM; y++){
     for(int x=0; x<X_DIM; x++){
       choose_grid[x][y] = 0;
@@ -190,6 +206,7 @@ void setup() {
   }
 }
 
+// constantly looping to update between the data
 void loop() {
   multicom_update();
   trellis.read();
@@ -197,36 +214,55 @@ void loop() {
   
 }
 
+// receiving the data, based oon the state, we do different things -- going to the functions we wrote
 void multicom_receive()
 {
+  delay(100);
+// if there is something supposed to happen
   if (mydata.state != -1){
+    // updating the state with what is received
+    Serial.println("Change of state");
     state = mydata.state;
+    Serial.println(state);
+    // if the player is supposed to be hitting
     if (state == 1) {
       drawpad();
       Serial.println("Drawpad");
     }
+    // if the other player is supposed to hit, our lights turn off
     if (state == 2) {
       offpad();
       Serial.println("Offpad");
     }
   }
+  // if there is nothing supposed to happen
   else {
-    if (state == 1) {
+   if (state == 1) {
+      Serial.println("lmao");
       if (mydata.push){
-        grid[mydata.c1][mydata.c2] = 2;
+        // we are updating the grid based on whether we were hit or not
+        grid[mydata.c2][mydata.c1] = 2;
       }
       else{
-        grid[mydata.c1][mydata.c2] = 1;
+        grid[mydata.c2][mydata.c1] = 1;
       }
+      // drawing the pad if the state is not 
       drawpad();
       delay(1000);
+      for (int i = 0; i < 10; i++){
       multicom_send(2, 2, 0, 0, false);
-      delay(50);
+      delay(5);
+      }
+      for (int i = 0; i < 10; i++){
       multicom_send(2, 3, 0, 0, false);
-      delay(50);
+      delay(5);
+      }
+      for (int i = 0; i < 10; i++){
       multicom_send(2, 4, 0, 0, false);
-      delay(50);
+      delay(5);
+      }
       state = 2;
+      Serial.println("all states changed to 2");
       offpad();
     }
     else{

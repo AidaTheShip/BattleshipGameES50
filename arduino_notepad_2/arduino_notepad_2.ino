@@ -123,7 +123,7 @@ TrellisCallback blink(keyEvent evt){
         int c2 = evt.bit.NUM % 8;
         if (grid[c1][c2] == 0) {
           trellis.setPixelColor(evt.bit.NUM, 0x00FF00);
-          multicom_send(-1, 4, c1, c2, true)
+          multicom_send(-1, 4, c1, c2, true);
         }
     }
   }
@@ -150,9 +150,9 @@ void offpad() {
   for(int y=0; y<Y_DIM; y++){
     for(int x=0; x<X_DIM; x++){
       trellis.setPixelColor(x, y, 0x000000);
-      Serial.println("set off");
     }
   }
+  Serial.println("set off");
   trellis.show();
 }
 
@@ -199,8 +199,11 @@ void loop() {
 
 void multicom_receive()
 {
+  delay(100);
   if (mydata.state != -1){
+    Serial.println("Change of state");
     state = mydata.state;
+    Serial.println(state);
     if (state == 1) {
       offpad();
       Serial.println("Offpad");
@@ -213,20 +216,27 @@ void multicom_receive()
   else {
     if (state == 2) {
       if (mydata.push){
-        grid[mydata.c1][mydata.c2] = 2;
+        grid[mydata.c2][mydata.c1] = 2;
       }
       else{
-        grid[mydata.c1][mydata.c2] = 1;
+        grid[mydata.c2][mydata.c1] = 1;
       }
       drawpad();
       delay(1000);
-      multicom_send(1, 2, 0, 0, false);
-      delay(50);
+      for (int i = 0; i < 10; i++){
+      multicom_send(1, 1, 0, 0, false);
+      delay(5);
+      }
+      for (int i = 0; i < 10; i++){
       multicom_send(1, 3, 0, 0, false);
-      delay(50);
+      delay(5);
+      }
+      for (int i = 0; i < 10; i++){
       multicom_send(1, 4, 0, 0, false);
-      delay(50);
+      delay(5);
+      }
       state = 1;
+      Serial.println("all states changed to 1");
       offpad();
     }
     else{

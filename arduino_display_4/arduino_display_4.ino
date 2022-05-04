@@ -17,7 +17,7 @@
  
 int state;
 // 0 -> choose warships, 1 -> the player 1 hits the opponent, 2 -> the player 2 hits the opponent, 3 -> end of the game
-int grid[8][8]; // currently discovered grid of the opponent, 0 -> no try, 1 -> miss, 2 -> ship
+int grid[8][8];
 
 EasyTransfer ET;
 
@@ -90,12 +90,14 @@ void setup() {
   drawgrid();
   state=1;
   delay(1000);
-  multicom_send(1, 2, 0, 0, false);
-  delay(100);
-  multicom_send(1, 1, 0, 0, false);
-  delay(100);
-  multicom_send(1, 3, 0, 0, false);
-  delay(100);
+  for (int i = 0; i < 10; i++){
+      multicom_send(1, 1, 0, 0, false);
+      delay(5);
+   }
+  for (int i = 0; i < 10; i++){
+      multicom_send(1, 2, 0, 0, false);
+      delay(5);
+   }
 }
 
 void loop() {
@@ -126,6 +128,7 @@ void multicom_send(int state, char to, int c1, int c2, bool push)
 
 void multicom_receive()
 {
+  delay(100);
   if (mydata.state != -1){
     state=mydata.state;
     // draw state here
@@ -141,11 +144,17 @@ void multicom_receive()
     }
     if (state==1){
       if (grid[mydata.c2][mydata.c1] == 1){
-        multicom_send(-1, 2, mydata.c1, mydata.c2, true);
+        for (int i = 0; i < 10; i++){
+          multicom_send(-1, 2, mydata.c1, mydata.c2, true);
+          delay(5);
+        }
         grid[mydata.c2][mydata.c1] = 3;
       }
       else if (grid[mydata.c2][mydata.c1] == 0){
-        multicom_send(-1, 2, mydata.c1, mydata.c2, false);
+         for (int i = 0; i < 10; i++){
+          multicom_send(-1, 2, mydata.c1, mydata.c2, false);
+          delay(5);
+        }
         grid[mydata.c2][mydata.c1] = 2;
       }
       else {

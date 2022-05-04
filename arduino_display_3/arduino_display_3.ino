@@ -45,7 +45,7 @@ void timer() {
   }
 }
 
-void drawgrid(){
+void drawgrid() {
   for(uint8_t x = 16; x < 32; x++){
     for(uint8_t y = 0; y < 16; y++){
       if (grid[(x-16)/2][y/2] == 1){
@@ -87,6 +87,7 @@ void setup() {
     }
   }
   drawgrid();
+  state=1;
 }
 
 void loop() {
@@ -117,6 +118,7 @@ void multicom_send(int state, char to, int c1, int c2, bool push)
 
 void multicom_receive()
 {
+  delay(100);
   if (mydata.state != -1){
     state=mydata.state;
     // draw state here
@@ -132,11 +134,18 @@ void multicom_receive()
     }
     if (state==1){
       if (grid[mydata.c2][mydata.c1] == 1){
-        multicom_send(-1, 1, mydata.c1, mydata.c2, true);
+        for (int i = 0; i < 10; i++){
+          multicom_send(-1, 1, mydata.c1, mydata.c2, true);
+          delay(10);
+        }
+        Serial.println("Sent to node 1 true");
         grid[mydata.c2][mydata.c1] = 3;
       }
       else if (grid[mydata.c2][mydata.c1] == 0){
-        multicom_send(-1, 1, mydata.c1, mydata.c2, false);
+         for (int i = 0; i < 10; i++){
+          multicom_send(-1, 1, mydata.c1, mydata.c2, false);
+          delay(5);
+        }
         grid[mydata.c2][mydata.c1] = 2;
       }
       else {
