@@ -125,6 +125,12 @@ TrellisCallback blink(keyEvent evt){
           trellis.setPixelColor(evt.bit.NUM, 0x00FF00);
           multicom_send(-1, 4, c1, c2, true);
         }
+        else if (grid[c1][c2]==1){
+          trellis.setPixelColor(evt.bit.NUM, 0xFFFFFF);
+        }
+        else if (grid[c1][c2]==2){
+          trellis.setPixelColor(evt.bit.NUM, 0xFF0000);
+        }  
     }
   }
   trellis.show();
@@ -191,10 +197,11 @@ void setup() {
 }
 
 void loop() {
+  if (state!=3){
   multicom_update();
   trellis.read();
   delay(20);
-  
+  }
 }
 
 void multicom_receive()

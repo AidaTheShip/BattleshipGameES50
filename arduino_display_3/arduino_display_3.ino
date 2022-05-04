@@ -45,6 +45,80 @@ void timer() {
   }
 }
 
+void lose(){
+  for (int i = 0; i < 16; i++){
+    for (int j = 0; j < 16; j++){
+      matrix.drawPixel(i, j, matrix.Color333(7, 0, 0));
+    }
+  }
+}
+
+void win(){
+  for (int i = 0; i < 16; i++){
+    for (int j = 0; j < 16; j++){
+      matrix.drawPixel(i, j, matrix.Color333(0, 7, 0));
+    }
+  }
+}
+
+void drawstate(){
+  if (state==2){
+    for (int i = 0; i < 16; i++){
+      for (int j = 0; j < 16; j++){
+        matrix.drawPixel(i, j, matrix.Color333(0, 0, 0));
+      }
+    }
+    matrix.drawPixel(1, 5, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(1, 6, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(1, 7, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(1, 8, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(1, 9, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(4, 5, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(4, 6, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(4, 7, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(4, 8, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(4, 9, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(2, 7, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(3, 7, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(7, 5, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(7, 6, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(7, 7, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(7, 8, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(7, 9, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(6, 5, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(8, 5, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(6, 9, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(8, 9, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(10, 5, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(11, 5, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(12, 5, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(13, 5, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(14, 5, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(12, 5, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(12, 6, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(12, 7, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(12, 8, matrix.Color333(7, 0, 0));
+    matrix.drawPixel(12, 9, matrix.Color333(7, 0, 0));
+  }
+  else if (state == 1){
+    for (int i = 0; i < 16; i++){
+      for (int j = 0; j < 16; j++){
+        matrix.drawPixel(i, j, matrix.Color333(0, 0, 0));
+      }
+    } 
+  }
+}
+
+bool alive(){
+  for (int i = 0; i < 8; i++){
+    for (int j = 0; j < 8; j++){
+      if (grid[i][j] == 1)
+        return true;
+    }
+  }
+  return false;
+}
+
 void drawgrid() {
   for(uint8_t x = 16; x < 32; x++){
     for(uint8_t y = 0; y < 16; y++){
@@ -88,6 +162,7 @@ void setup() {
   }
   drawgrid();
   state=1;
+  drawstate();
 }
 
 void loop() {
@@ -120,8 +195,12 @@ void multicom_receive()
 {
   delay(100);
   if (mydata.state != -1){
+    Serial.println("State just changed");
     state=mydata.state;
-    // draw state here
+    drawstate();
+    if (state==3){
+      win();
+    }
   }
   else {
     if (state==0){
@@ -134,12 +213,29 @@ void multicom_receive()
     }
     if (state==1){
       if (grid[mydata.c2][mydata.c1] == 1){
+        grid[mydata.c2][mydata.c1] = 3;
+        if (alive()){
         for (int i = 0; i < 10; i++){
           multicom_send(-1, 1, mydata.c1, mydata.c2, true);
           delay(10);
         }
         Serial.println("Sent to node 1 true");
-        grid[mydata.c2][mydata.c1] = 3;
+        }
+        else{
+          lose();
+            for (int i = 0; i < 10; i++){
+                multicom_send(3, 1, 0, 0, false);
+                delay(5);
+            }
+          for (int i = 0; i < 10; i++){
+              multicom_send(3, 2, 0, 0, false);
+              delay(5);
+           }
+           for (int i = 0; i < 10; i++){
+              multicom_send(3, 4, 0, 0, false);
+              delay(5);
+            }
+        }
       }
       else if (grid[mydata.c2][mydata.c1] == 0){
          for (int i = 0; i < 10; i++){

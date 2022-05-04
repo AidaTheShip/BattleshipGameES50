@@ -133,11 +133,14 @@ TrellisCallback blink(keyEvent evt){
         int c2 = evt.bit.NUM % 8;
         if (grid[c1][c2] == 0) {
           trellis.setPixelColor(evt.bit.NUM, 0x00FF00);
-          // sending the coordinate where we hit to the display of the other player
-          // in the code of the other player, there has to be a line of code, where it checks if
-          // that coordinate is in the thing
           multicom_send(-1, 3, c1, c2, true);
         }
+        else if (grid[c1][c2]==1){
+          trellis.setPixelColor(evt.bit.NUM, 0xFFFFFF);
+        }
+        else if (grid[c1][c2]==2){
+          trellis.setPixelColor(evt.bit.NUM, 0xFF0000);
+        } 
     }
   }
   // showing the trellis after everything is done
@@ -208,9 +211,11 @@ void setup() {
 
 // constantly looping to update between the data
 void loop() {
+  if (state!=3){
   multicom_update();
   trellis.read();
   delay(20);
+  }
   
 }
 
