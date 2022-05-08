@@ -1,10 +1,9 @@
+// including all the libraries
 #include <EasyTransfer.h>
-
-// you can use softserial like this
 #include <SoftwareSerial.h>
-
 #include <RGBmatrixPanel.h>
 
+// defining ids and the necessary input pins
 #define NODEID 4
 #define NUMNODES 4; 
 
@@ -14,11 +13,13 @@
 #define A A0
 #define B A1
 #define C A2
- 
-int state;
+
 // 0 -> choose warships, 1 -> the player 1 hits the opponent, 2 -> the player 2 hits the opponent, 3 -> end of the game
+
+int state;
 int grid[8][8];
 
+// same as in other files (see arduino_display_3 file)
 EasyTransfer ET;
 
 struct RECEIVE_DATA_STRUCTURE{

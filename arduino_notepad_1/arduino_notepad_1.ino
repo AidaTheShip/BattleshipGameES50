@@ -31,7 +31,6 @@ struct RECEIVE_DATA_STRUCTURE{
 
 RECEIVE_DATA_STRUCTURE mydata;
 
-
 //create a matrix of trellis panels
 Adafruit_NeoTrellis t_array[Y_DIM/4][X_DIM/4] = {
   
@@ -41,6 +40,7 @@ Adafruit_NeoTrellis t_array[Y_DIM/4][X_DIM/4] = {
   
 };
 
+// rest of code is similiar to other codes - see "arduino display 3, etc."
 //pass this matrix to the multitrellis object
 Adafruit_MultiTrellis trellis((Adafruit_NeoTrellis *)t_array, Y_DIM/4, X_DIM/4);
 

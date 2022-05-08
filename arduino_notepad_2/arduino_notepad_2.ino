@@ -41,6 +41,7 @@ Adafruit_NeoTrellis t_array[Y_DIM/4][X_DIM/4] = {
 //pass this matrix to the multitrellis object
 Adafruit_MultiTrellis trellis((Adafruit_NeoTrellis *)t_array, Y_DIM/4, X_DIM/4);
 
+// same as in other codes - see for more information
 // Input a value 0 to 255 to get a color value.
 // The colors are a transition r - g - b - back to r.
 uint32_t Wheel(byte WheelPos) {

@@ -1,9 +1,9 @@
+// including all the necessary libraries
 #include <EasyTransfer.h>
-
-// you can use softserial like this
 #include <SoftwareSerial.h>
 #include <RGBmatrixPanel.h>
 
+// defining arduino ID number and pins we want to look at
 #define NODEID 3
 #define NUMNODES 4; 
 
@@ -14,8 +14,10 @@
 #define B   A1
 #define C   A2
 
+// creating a Transfer object
 EasyTransfer ET;
 
+// creating a datat type for receiving/transmitting data
 struct RECEIVE_DATA_STRUCTURE{
   int state;
   char from;
@@ -25,14 +27,20 @@ struct RECEIVE_DATA_STRUCTURE{
   bool push;
 };
 
+// creating such data type
 RECEIVE_DATA_STRUCTURE mydata;
 
-int state;
 // 0 -> choose warships, 1 -> the player 1 hits the opponent, 2 -> the player 2 hits the opponent, 3 -> end of the game
+int state;
+
 int grid[8][8]; //my grid, 0 -> sea, 1 -> ship, 2 -> miss, 3 -> hit 
 
+// creating matrix for LED matrix panel
 RGBmatrixPanel matrix(A, B, C, CLK, LAT, OE, false);
 
+/* function for the 30 seconds at the beginning of the game to choose your ships
+the time will be shown on the LED display by turning on pixels every second
+*/
 void timer() {
   for(uint8_t x = 0; x < 32; x++){
     for(uint8_t y = 0; y < 16; y++){
@@ -45,6 +53,7 @@ void timer() {
   }
 }
 
+// what the LED display shows when the player loses
 void lose(){
   for (int i = 0; i < 16; i++){
     for (int j = 0; j < 16; j++){
@@ -53,6 +62,7 @@ void lose(){
   }
 }
 
+// what the LED display shows when the player wins
 void win(){
   for (int i = 0; i < 16; i++){
     for (int j = 0; j < 16; j++){
@@ -61,6 +71,7 @@ void win(){
   }
 }
 
+// for the game logic and drawing the ships on the LED display
 void drawstate(){
   if (state==2){
     for (int i = 0; i < 16; i++){
@@ -109,6 +120,7 @@ void drawstate(){
   }
 }
 
+// checks if ship alive or not
 bool alive(){
   for (int i = 0; i < 8; i++){
     for (int j = 0; j < 8; j++){
@@ -119,6 +131,7 @@ bool alive(){
   return false;
 }
 
+// draws the grid of ships at the very beginning
 void drawgrid() {
   for(uint8_t x = 16; x < 32; x++){
     for(uint8_t y = 0; y < 16; y++){
@@ -138,6 +151,7 @@ void drawgrid() {
   }
 }
 
+// things are initialized here
 void setup() {
   state=0;
   Serial.begin(9600);
@@ -165,10 +179,12 @@ void setup() {
   drawstate();
 }
 
+// always updates the communication to see if any changes have been made
 void loop() {
   multicom_update();
 }
 
+// update function, code for receiving data
 void multicom_update()
 {
  while(ET.receiveData())
@@ -180,6 +196,11 @@ void multicom_update()
   }
 }
 
+/*
+Code for sending data the data - we send from which arduino we are sending, 
+to which arduino we are sending, the two coordinates we are sending and whether 
+the button was pushed or not
+*/
 void multicom_send(int state, char to, int c1, int c2, bool push)
 {
   mydata.state = state ;
@@ -191,6 +212,10 @@ void multicom_send(int state, char to, int c1, int c2, bool push)
   ET.sendData() ; 
 }
 
+/*
+Code for receiving the data - based on received info changing the 
+pixels on the LED display
+ */
 void multicom_receive()
 {
   delay(100);
